@@ -1,0 +1,15 @@
+# Minimal requirements for VoiceAlert System (without audio dependencies)
+# Use this if you can't install PyAudio or other audio packages
+
+openai>=1.0.0
+elevenlabs>=1.0.0
+requests>=2.25.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+loguru>=0.7.0
+
+# Optional audio dependencies - install manually if needed:
+# PyAudio>=0.2.11
+# SpeechRecognition>=3.10.0
+# pygame>=2.5.0
+# pydub>=0.25.1

@@ -11,6 +11,7 @@ from loguru import logger
 from cve_scanner import CVEScanner
 from llm_summarizer import LLMSummarizer
 from voice_caller import VoiceCaller, create_voice_caller
+from voice_interface import VoiceInterface, create_voice_interface
 from command_engine import CommandEngine
 
 class VoiceAlertSystem:
@@ -24,12 +25,20 @@ class VoiceAlertSystem:
         self.poll_interval = int(os.getenv("POLL_INTERVAL_MINUTES", 5)) * 60
         self.engineer_phone = os.getenv("ENGINEER_PHONE_NUMBER")
         self.use_mock_voice = os.getenv("USE_MOCK_VOICE", "false").lower() == "true"
+        self.use_microphone = os.getenv("USE_MICROPHONE", "true").lower() == "true"
         
         # Initialize components
         self.scanner = CVEScanner(poll_interval_minutes=self.poll_interval // 60)
         self.summarizer = LLMSummarizer()
-        self.voice_caller = create_voice_caller(use_mock=self.use_mock_voice)
         self.command_engine = CommandEngine()
+        
+        # Initialize voice interface (microphone or phone)
+        if self.use_microphone:
+            self.voice_interface = create_voice_interface(use_mock=self.use_mock_voice)
+            logger.info("Using microphone-based voice interface")
+        else:
+            self.voice_caller = create_voice_caller(use_mock=self.use_mock_voice)
+            logger.info("Using phone-based voice caller")
         
         # Setup logging
         log_level = os.getenv("LOG_LEVEL", "INFO")
@@ -48,21 +57,23 @@ class VoiceAlertSystem:
     
     def _validate_config(self):
         """Validate system configuration"""
-        if not self.engineer_phone:
-            raise ValueError("ENGINEER_PHONE_NUMBER not configured")
+        if not self.use_microphone and not self.engineer_phone:
+            logger.warning("ENGINEER_PHONE_NUMBER not configured and not using microphone")
         
         if not os.getenv("OPENAI_API_KEY"):
             logger.warning("OPENAI_API_KEY not found, LLM features may not work")
         
         if not os.getenv("ELEVENLABS_API_KEY") and not self.use_mock_voice:
-            logger.warning("ELEVENLABS_API_KEY not found, using mock voice caller")
-            self.voice_caller = create_voice_caller(use_mock=True)
+            logger.warning("ELEVENLABS_API_KEY not found, using mock voice interface")
     
     def start(self):
         """Start the main monitoring loop"""
         logger.info("Starting VoiceAlert System")
         logger.info(f"Poll interval: {self.poll_interval} seconds")
-        logger.info(f"Engineer phone: {self.engineer_phone}")
+        if self.use_microphone:
+            logger.info("Voice mode: Microphone interface")
+        else:
+            logger.info(f"Voice mode: Phone calls to {self.engineer_phone}")
         
         self.running = True
         
@@ -139,18 +150,25 @@ class VoiceAlertSystem:
             # Setup command handler for this CVE
             command_callback = lambda cmd: self.command_engine.process_voice_command(cmd, cve_id)
             
-            # Place the alert call
-            call_id = self.voice_caller.place_call(
-                phone_number=self.engineer_phone,
-                script=voice_script,
-                command_callback=command_callback
-            )
-            
-            if call_id:
-                logger.info(f"Alert call placed for {cve_id}, call ID: {call_id}")
-                self._monitor_call(call_id, cve_id)
+            # Send alert via appropriate interface
+            if self.use_microphone:
+                # Use microphone interface
+                logger.info(f"Starting voice conversation for {cve_id}")
+                result = self.voice_interface.start_conversation(voice_script, command_callback)
+                logger.info(f"Voice conversation completed for {cve_id}: {result}")
             else:
-                logger.error(f"Failed to place alert call for {cve_id}")
+                # Use phone caller (legacy)
+                call_id = self.voice_caller.place_call(
+                    phone_number=self.engineer_phone,
+                    script=voice_script,
+                    command_callback=command_callback
+                )
+                
+                if call_id:
+                    logger.info(f"Alert call placed for {cve_id}, call ID: {call_id}")
+                    self._monitor_call(call_id, cve_id)
+                else:
+                    logger.error(f"Failed to place alert call for {cve_id}")
             
         except Exception as e:
             logger.error(f"Error processing vulnerability: {e}")
@@ -182,7 +200,8 @@ class VoiceAlertSystem:
             time.sleep(10)  # Check every 10 seconds
         
         # Cleanup
-        self.voice_caller.end_call(call_id)
+        if hasattr(self, 'voice_caller'):
+            self.voice_caller.end_call(call_id)
     
     def _signal_handler(self, signum, frame):
         """Handle system signals for graceful shutdown"""

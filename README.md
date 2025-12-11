@@ -10,8 +10,8 @@ The VoiceAlert System continuously monitors CVE feeds, generates AI-powered vuln
 
 - **Automated CVE Monitoring**: Uses CVELib CLI to scan for new vulnerabilities
 - **AI-Powered Summarization**: Leverages OpenAI GPT to generate human-readable vulnerability summaries
-- **Voice Notifications**: Places phone calls using ElevenLabs API with text-to-speech
-- **Interactive Commands**: Accepts voice commands to trigger response actions
+- **Voice Notifications**: Uses ElevenLabs TTS with microphone interface for local testing, or phone calls for production
+- **Interactive Commands**: Accepts voice commands via microphone with speech recognition
 - **Defensive Actions**: Automated patching, system isolation, and emergency shutdown capabilities
 
 ## Architecture
@@ -25,27 +25,58 @@ CVELib Scanner → CVE Parser → LLM Summarizer → Voice Caller → Command En
 
 ## Installation
 
-1. **Install Dependencies**:
+### Option 1: Automatic Installation (Recommended)
 ```bash
+python install_dependencies.py
+```
+
+### Option 2: Manual Installation
+
+**For full audio support:**
+```bash
+# macOS users: Install PortAudio first
+brew install portaudio
+
+# Install all dependencies
 pip install -r requirements.txt
 ```
 
-2. **Install CVELib**:
+**For minimal installation (text-based testing):**
 ```bash
-# Follow CVELib installation instructions
+pip install -r requirements_minimal.txt
 ```
 
-3. **Configure Environment**:
+### Additional Setup
+
+1. **Install CVELib**:
+```bash
+# Follow CVELib installation instructions from their documentation
+```
+
+2. **Configure Environment**:
 ```bash
 cp .env.example .env
 # Edit .env with your API keys and settings
 ```
 
-4. **Set Up Scripts**:
+3. **Set Up Scripts**:
 ```bash
 chmod +x scripts/*.sh
 # Review and customize scripts for your environment
 ```
+
+### Troubleshooting Installation
+
+**PyAudio Issues:**
+- **macOS**: `brew install portaudio` then `pip install PyAudio`
+- **Ubuntu**: `sudo apt-get install portaudio19-dev` then `pip install PyAudio`
+- **Windows**: Try `pip install PyAudio` or download wheel from [here](https://www.lfd.uci.edu/~gohlke/pythonlibs/)
+- **Fallback**: Use `USE_MOCK_VOICE=true` or the simple voice interface
+
+**Audio Dependencies Not Working:**
+- Use minimal requirements: `pip install -r requirements_minimal.txt`
+- Set `USE_MOCK_VOICE=true` in your `.env` file
+- System will automatically fall back to text-based interaction
 
 ## Configuration
 
