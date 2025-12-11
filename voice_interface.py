@@ -466,7 +466,18 @@ def create_voice_interface(use_mock: bool = False) -> VoiceInterface:
     if use_mock:
         return MockVoiceInterface()
     
-    # Try enhanced interface with speech recognition first
+    # Try ElevenLabs voice interface first (if configured)
+    try:
+        interface = VoiceInterface()
+        if interface.agent_id:
+            logger.info("Using ElevenLabs voice interface with agent")
+            return interface
+        else:
+            logger.info("ElevenLabs interface available but no agent configured")
+    except Exception as e:
+        logger.warning(f"ElevenLabs interface failed: {e}")
+    
+    # Fall back to enhanced interface with speech recognition
     try:
         from speech_recognition_helper import create_enhanced_voice_interface
         logger.info("Using enhanced voice interface (system TTS + speech recognition)")

@@ -160,95 +160,12 @@ class SpeechRecognizer:
     def _macos_dictation(self, timeout: int, prompt: str) -> Optional[str]:
         """Use macOS built-in dictation via AppleScript"""
         print(f"\n🎤 {prompt}")
-        print("Starting speech recognition...")
+        print("⚠️  macOS dictation disabled to prevent file opening issues")
+        print("🔄 Skipping to text input...")
         
-        # Create a temporary text file to capture dictation
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.txt', delete=False) as temp_file:
-            temp_path = temp_file.name
-        
-        try:
-            # AppleScript to open TextEdit, dictate, and save
-            applescript = f'''
-            tell application "TextEdit"
-                activate
-                delay 0.5
-                make new document
-                delay 0.5
-                
-                -- Try to start dictation using the standard keyboard shortcut
-                tell application "System Events"
-                    -- Most common dictation shortcuts: Fn+Fn or Cmd+Space twice
-                    key code 63  -- Fn key
-                    delay 0.1
-                    key code 63  -- Fn key again
-                    delay 2
-                    
-                    -- If that doesn't work, try Cmd+Space twice
-                    if false then
-                        keystroke " " using command down
-                        delay 0.1
-                        keystroke " " using command down
-                        delay 2
-                    end if
-                end tell
-                
-                delay {timeout}
-                
-                -- Get the text content
-                set docText to text of front document
-                
-                -- Save to temporary file
-                tell application "System Events"
-                    set textFile to open for access POSIX file "{temp_path}" with write permission
-                    write docText to textFile
-                    close access textFile
-                end tell
-                
-                -- Close the document without saving
-                close front document saving no
-            end tell
-            '''
-            
-            print(f"🎤 Speak now for up to {timeout} seconds...")
-            print("💡 You may need to manually start dictation if it doesn't auto-start")
-            print("   Try pressing Fn+Fn or the configured dictation shortcut")
-            
-            result = subprocess.run(
-                ["osascript", "-e", applescript],
-                capture_output=True,
-                text=True,
-                timeout=timeout + 10
-            )
-            
-            # Read the result from the temp file
-            try:
-                with open(temp_path, 'r') as f:
-                    dictated_text = f.read().strip()
-                
-                if dictated_text and dictated_text != "":
-                    print(f"✅ Captured: '{dictated_text}'")
-                    return dictated_text
-                else:
-                    print("⚠️  No dictation captured")
-                    
-            except FileNotFoundError:
-                print("⚠️  Dictation file not found")
-            
-        except subprocess.TimeoutExpired:
-            print("⚠️  Dictation timed out")
-        except Exception as e:
-            logger.warning(f"macOS dictation failed: {e}")
-            
-        finally:
-            # Clean up temp file
-            try:
-                os.unlink(temp_path)
-            except:
-                pass
-        
-        # Fallback to text input
-        print("🔄 Falling back to text input...")
-        return input("Please type your command: ").strip()
+        # Skip the TextEdit approach that causes file opening issues
+        # Go directly to text input fallback
+        return self._text_fallback(prompt)
     
     def _windows_sapi(self, timeout: int, prompt: str) -> Optional[str]:
         """Use Windows Speech API"""
