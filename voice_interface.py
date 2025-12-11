@@ -7,6 +7,14 @@ import threading
 import json
 import requests
 from typing import Optional, Callable, Dict
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 try:
     import speech_recognition as sr
     SPEECH_RECOGNITION_AVAILABLE = True
@@ -458,15 +466,23 @@ def create_voice_interface(use_mock: bool = False) -> VoiceInterface:
     if use_mock:
         return MockVoiceInterface()
     
-    # Always try simple interface first since PyAudio is problematic
+    # Try enhanced interface with speech recognition first
     try:
-        from simple_voice_interface import create_simple_voice_interface
-        logger.info("Using simple voice interface (system TTS + text input)")
-        return create_simple_voice_interface()
+        from speech_recognition_helper import create_enhanced_voice_interface
+        logger.info("Using enhanced voice interface (system TTS + speech recognition)")
+        return create_enhanced_voice_interface()
     except Exception as e:
-        logger.warning(f"Simple interface failed: {e}")
-        logger.info("Falling back to mock interface")
-        return MockVoiceInterface()
+        logger.warning(f"Enhanced interface failed: {e}")
+        
+        # Fall back to simple interface
+        try:
+            from simple_voice_interface import create_simple_voice_interface
+            logger.info("Using simple voice interface (system TTS + text input)")
+            return create_simple_voice_interface()
+        except Exception as e2:
+            logger.warning(f"Simple interface failed: {e2}")
+            logger.info("Falling back to mock interface")
+            return MockVoiceInterface()
 
 if __name__ == "__main__":
     # Test the voice interface
@@ -484,8 +500,8 @@ if __name__ == "__main__":
         else:
             return "Unknown command. Available commands: patch, quarantine, acknowledge, status, shutdown."
     
-    # Test with mock interface
-    interface = create_voice_interface(use_mock=True)
+    # Test with ElevenLabs interface 
+    interface = create_voice_interface(use_mock=False)
     
     # Test audio system
     interface.test_audio_system()

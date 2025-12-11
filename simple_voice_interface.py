@@ -43,12 +43,33 @@ class SimpleVoiceInterface:
             return True
     
     def listen(self, timeout: int = 5, phrase_timeout: int = 2) -> Optional[str]:
-        """Get text input as voice simulation"""
-        print("\n🎤 Listening for your response...")
+        """Listen for voice input with speech recognition"""
         try:
-            response = input("Enter your voice command (or press Enter to skip): ").strip()
+            # Try to use enhanced speech recognition
+            from speech_recognition_helper import SpeechRecognizer
+            
+            recognizer = SpeechRecognizer()
+            result = recognizer.listen(timeout=timeout, prompt="🎤 Listening for your voice command...")
+            
+            if result:
+                return result
+            else:
+                print("No speech detected, falling back to text input...")
+                return self._text_fallback()
+                
+        except ImportError:
+            logger.warning("Speech recognition not available, using text input")
+            return self._text_fallback()
+        except Exception as e:
+            logger.warning(f"Speech recognition failed: {e}, using text input")
+            return self._text_fallback()
+    
+    def _text_fallback(self) -> Optional[str]:
+        """Fallback to text input"""
+        try:
+            response = input("💬 Enter your voice command (or press Enter to skip): ").strip()
             return response if response else None
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             return None
     
     def start_conversation(self, initial_message: str, command_callback: Callable[[str], str]) -> str:
